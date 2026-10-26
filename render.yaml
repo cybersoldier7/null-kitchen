@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: null-orch
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install --no-cache-dir fastapi uvicorn
+    startCommand: uvicorn nullcore.orch.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/muster
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: PORT
+        value: "10000"
