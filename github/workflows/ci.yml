@@ -1,0 +1,27 @@
+name: ci
+
+   on:
+     push:
+       branches: [main]
+
+   jobs:
+     gate:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/checkout@v4
+         - uses: actions/setup-python@v5
+           with:
+             python-version: "3.11"
+         - name: Install deps
+           run: pip install --no-cache-dir fastapi uvicorn
+         - name: Compile every module
+           run: python -m compileall -q nullcore
+         - name: Route table check
+           run: |
+             python - <<'PY'
+             from nullcore.orch.app import app
+             paths = {r.path for r in app.routes}
+             assert "/api/muster" in paths, paths
+             assert "/api/status" in paths, paths
+             print("ROUTES_OK", sorted(paths))
+             PY
