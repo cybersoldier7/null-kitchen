@@ -60,9 +60,11 @@ class NullReplayReader:
     def __init__(self, conn: sqlite3.Connection) -> None: self._conn = conn
     def replay(self, idempotency_key: str) -> bytes:
         if not isinstance(idempotency_key, str) or not idempotency_key: raise ReplayNotFoundError("invalid key")
+        table_row = self._conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'calls'").fetchone()
+        if table_row is None: raise ReplayNotFoundError(f"no captured call for idempotency key: {idempotency_key}")
         row = self._conn.execute("SELECT response_bytes FROM calls WHERE idempotency_key = ?", (idempotency_key,)).fetchone()
-        if row is None: raise ReplayNotFoundError("no captured call")
+        if row is None: raise ReplayNotFoundError(f"no captured call for idempotency key: {idempotency_key}")
         stored = row[0]
         if isinstance(stored, (bytearray, memoryview)): return bytes(stored)
         if isinstance(stored, bytes): return stored
-        raise ReplayNotFoundError("response is not bytes")
+        raise ReplayNotFoundError(f"captured response is not bytes for idempotency key: {idempotency_key}")
