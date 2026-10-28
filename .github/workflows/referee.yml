@@ -9,10 +9,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install deps
-        run: pip install fastapi uvicorn
-      - name: Run M1a and M1b tests
-        run: python -m unittest discover -s tests -v
+      - name: Build sealed kitchen image (Airlock fetch)
+        run: docker build -t null-referee -f Dockerfile.referee .
+      - name: Run tests in sealed room (zero egress)
+        run: |
+          docker run --rm \
+            --network none \
+            --read-only \
+            --tmpfs /tmp:rw,size=64m \
+            --memory=512m \
+            --cpus=1 \
+            --pids-limit=256 \
+            --security-opt no-new-privileges \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            -v "${{ github.workspace }}:/work:ro" \
+            -w /work \
+            null-referee \
+            python -m unittest discover -s tests -v
