@@ -11,6 +11,14 @@ because SQLite keeps an in-memory journal in RAM -- requesting WAL
 there is a silent no-op -- and a private in-memory database has
 nothing to gain from it.
 
+The connection is opened with ``check_same_thread=False`` because
+FastAPI serves synchronous endpoints on threadpool workers: a
+connection created at import time in the main thread is always used
+from a foreign thread in production.  SQLite's serialized build, the
+WAL journal, and the busy timeout keep that cross-thread access safe;
+the Python-level guard would only forbid a usage pattern every ORCH
+host relies on.
+
 The function owns no schema: the M1a primitives that the
 :class:`~nullcore.orch.director.OrchDirector` composes install their
 own tables and re-run the same pragmas, which is harmless because
@@ -37,8 +45,8 @@ def create_connection(db_path: str = ":memory:") -> sqlite3.Connection:
 
     Returns:
         A live :class:`sqlite3.Connection` with the busy timeout (and,
-        on a file-backed path, the WAL pair) already applied.  Closing
-        it belongs to the caller.
+        on a file-backed path, the WAL pair) already applied, usable
+        from any thread.  Closing it belongs to the caller.
 
     Raises:
         ValueError: when ``db_path`` is not a str or is empty.  An
@@ -52,7 +60,7 @@ def create_connection(db_path: str = ":memory:") -> sqlite3.Connection:
         )
     if not db_path:
         raise ValueError("db_path must be a non-empty str")
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.execute("PRAGMA busy_timeout=5000;")
     if db_path != ":memory:":
         conn.execute("PRAGMA journal_mode=WAL;")
