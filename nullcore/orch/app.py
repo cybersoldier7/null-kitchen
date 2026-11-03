@@ -5,9 +5,10 @@ from typing import Any
 
 from fastapi import FastAPI
 
+from nullcore.orch.stream_routes import build_stream_router
 from nullcore.orch.wiring import build_services
 
-app = FastAPI(title="NULL ORCH", version="m3-mount")
+app = FastAPI(title="NULL ORCH", version="m4-mount")
 
 _BOOT_EPOCH_MS: int = time.time_ns() // 1_000_000
 
@@ -22,6 +23,7 @@ _BOOT_EPOCH_MS: int = time.time_ns() // 1_000_000
 _SERVICES: dict = build_services(":memory:")
 
 app.include_router(_SERVICES["router"])
+app.include_router(build_stream_router(_SERVICES["bridge"]))
 
 
 @app.get("/api/muster")
@@ -35,8 +37,8 @@ def status() -> dict[str, Any]:
     return {
         "stage_vector": [],
         "service": "null-orch",
-        "errand": 3,
+        "errand": 4,
         "boot_epoch_ms": _BOOT_EPOCH_MS,
         "state_backend": "ephemeral-memory",
         "seats": list(_SERVICES["bridge"].seats()),
-    }
+}
